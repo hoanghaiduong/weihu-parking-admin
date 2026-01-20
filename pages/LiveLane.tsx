@@ -5,6 +5,17 @@ import { RefreshCw, AlertOctagon, CheckCircle2, MoreHorizontal, Settings, Mic, A
 
 const MOCK_PLATES = ['59T1-123.45', '30A-999.88', '51H-456.78', '60C-111.22', '29E-555.99'];
 
+// Realistic Image Sources (Specific Unsplash IDs for reliability)
+const CAR_IMAGES = [
+  'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=600', // White car rear
+  'https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&q=80&w=600', // Dark car parking
+  'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&q=80&w=600', // Mustang
+  'https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&q=80&w=600', // Car front
+];
+
+// CCTV View: Parking entrance / Garage view
+const CCTV_FEED_URL = 'https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&q=80&w=1200';
+
 export const LiveLane: React.FC = () => {
   const [activeLane, setActiveLane] = useState<'Entry' | 'Exit'>('Entry');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -47,7 +58,8 @@ export const LiveLane: React.FC = () => {
       const randomPlate = MOCK_PLATES[Math.floor(Math.random() * MOCK_PLATES.length)];
       const isCar = Math.random() > 0.3;
       const confidence = 0.85 + Math.random() * 0.14;
-      const imageUrl = `https://picsum.photos/seed/${Date.now()}/800/600`;
+      // Select a random real car image
+      const imageUrl = CAR_IMAGES[Math.floor(Math.random() * CAR_IMAGES.length)];
       
       const result: LprResult = {
         plate: randomPlate,
@@ -155,14 +167,14 @@ export const LiveLane: React.FC = () => {
             {/* Simulated Live Feed */}
             <div className="w-full h-full relative">
                <img 
-                 src="https://picsum.photos/seed/traffic/1280/720" 
+                 src={CCTV_FEED_URL}
                  alt="Live Feed" 
-                 className="w-full h-full object-cover opacity-60"
+                 className="w-full h-full object-cover opacity-80"
                />
                
                {/* Scanning Line Effect */}
-               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary-500/5 to-transparent animate-[scan_3s_ease-in-out_infinite] pointer-events-none"></div>
-               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay"></div>
+               <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary-500/10 to-transparent animate-[scan_3s_ease-in-out_infinite] pointer-events-none"></div>
+               <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
             </div>
             
             {/* AI Reticle Overlay */}

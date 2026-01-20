@@ -11,6 +11,7 @@ import { Devices } from './pages/Devices';
 import { Pricing } from './pages/Pricing';
 import { Users } from './pages/Users';
 import { Setup } from './pages/Setup';
+import { Sites } from './pages/Sites'; // Import new page
 import { Sidebar } from './components/Sidebar';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { Bell, Search, Sun, Moon, Monitor, X, ChevronDown, User, Settings, LogOut } from 'lucide-react';
@@ -343,6 +344,11 @@ const App: React.FC = () => {
           <Route path="/users" element={
             !isSystemSetup ? <Navigate to="/setup" /> :
             isAuthenticated ? <MainLayout><Users /></MainLayout> : <Navigate to="/login" />
+          } />
+
+          <Route path="/sites" element={
+            !isSystemSetup ? <Navigate to="/setup" /> :
+            isAuthenticated ? <MainLayout><Sites /></MainLayout> : <Navigate to="/login" />
           } />
 
           <Route path="/settings" element={

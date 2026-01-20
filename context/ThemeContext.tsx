@@ -5,7 +5,7 @@ export type BrandColor = 'lime' | 'blue' | 'purple' | 'orange' | 'cyan';
 export type FontFamily = 'jakarta' | 'inter' | 'roboto';
 
 interface ThemeProviderProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   defaultTheme?: Theme;
   defaultColor?: BrandColor;
   defaultFont?: FontFamily;
@@ -56,7 +56,6 @@ export function ThemeProvider({
   storageKey = 'weihu-ui-theme-v2',
   colorKey = 'weihu-brand-color-v2',
   fontKey = 'weihu-font-family-v1',
-  ...props
 }: ThemeProviderProps) {
   
   const [theme, setTheme] = useState<Theme>(
@@ -122,7 +121,7 @@ export function ThemeProvider({
   };
 
   return (
-    <ThemeContext.Provider {...props} value={value}>
+    <ThemeContext.Provider value={value}>
       {children}
     </ThemeContext.Provider>
   );

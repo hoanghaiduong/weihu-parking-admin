@@ -38,12 +38,12 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
   const baseStyles = "px-4 py-2.5 rounded-xl font-bold transition-all duration-200 flex items-center justify-center gap-2 text-sm active:scale-95";
   
-  // Updated to use text-primary-500 and bg-primary-500 instead of hardcoded hex
+  // Updated hover states for better visibility
   const variants = {
-    primary: "bg-primary-500 text-white shadow-lg shadow-primary-500/30 hover:bg-primary-600 border border-transparent",
-    secondary: "bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-white border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/10",
+    primary: "bg-primary-500 text-white shadow-lg shadow-primary-500/30 hover:brightness-110 border border-transparent",
+    secondary: "bg-gray-100 dark:bg-white/5 text-gray-700 dark:text-white border border-gray-200 dark:border-white/10 hover:bg-gray-200 dark:hover:bg-white/20",
     danger: "bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-500 border border-red-200 dark:border-red-500/20 hover:bg-red-100 dark:hover:bg-red-500/20",
-    ghost: "bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+    ghost: "bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5"
   };
 
   return (

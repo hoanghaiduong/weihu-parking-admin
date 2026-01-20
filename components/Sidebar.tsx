@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Video, Car, FileText, Settings, LogOut, CreditCard, ChevronLeft, ChevronRight, Server, Users, Ticket } from 'lucide-react';
+import { LayoutDashboard, Video, Car, FileText, Settings, LogOut, CreditCard, ChevronLeft, ChevronRight, Server, Users, Ticket, Building2 } from 'lucide-react';
 
 interface SidebarProps {
   currentPage: string;
@@ -17,9 +17,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, onLog
     { id: 'vehicles', icon: Car, label: 'Quản lý Xe' },
     { id: 'payments', icon: CreditCard, label: 'Doanh thu' },
     { type: 'divider' }, // Visual separator
-    { id: 'devices', icon: Server, label: 'Thiết bị' },
+    { id: 'sites', icon: Building2, label: 'Khu vực & Bãi xe' },
+    { id: 'devices', icon: Server, label: 'Camera & IoT' },
     { id: 'pricing', icon: Ticket, label: 'Cấu hình giá' },
-    { id: 'users', icon: Users, label: 'Người dùng' },
+    { id: 'users', icon: Users, label: 'Người dùng (IAM)' },
     { type: 'divider' },
     { id: 'settings', icon: Settings, label: 'Hệ thống' },
   ];
@@ -81,9 +82,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, onLog
                 <div className="ml-auto w-1.5 h-1.5 bg-white rounded-full hidden lg:block animate-pulse" />
               )}
               
-              {/* Custom Hover Tooltip for Collapsed Mode */}
+              {/* Custom Hover Tooltip for Collapsed Mode - Fixed Position to avoid clip */}
               {isCollapsed && (
-                <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 hidden lg:block shadow-xl translate-x-1 group-hover:translate-x-0 transform duration-200">
+                <div className="fixed left-20 ml-2 px-2.5 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[60] hidden lg:block shadow-xl translate-x-1 group-hover:translate-x-0 transform duration-200" style={{ marginTop: '-4px' }}>
                   {item.label}
                   {/* Arrow */}
                   <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-gray-900"></div>
@@ -111,7 +112,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, onLog
           
            {/* Hover Tooltip for Collapsed Mode */}
            {isCollapsed && (
-              <div className="absolute left-full ml-2 px-2.5 py-1.5 bg-red-600 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50 hidden lg:block shadow-xl translate-x-1 group-hover:translate-x-0 transform duration-200">
+              <div className="fixed left-20 bottom-8 ml-2 px-2.5 py-1.5 bg-red-600 text-white text-xs font-medium rounded-md opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[60] hidden lg:block shadow-xl translate-x-1 group-hover:translate-x-0 transform duration-200">
                 Đăng xuất
                 <div className="absolute top-1/2 -left-1 -translate-y-1/2 border-4 border-transparent border-r-red-600"></div>
               </div>

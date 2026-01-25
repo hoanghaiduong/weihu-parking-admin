@@ -1,20 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GlassCard, Button, Input, Badge } from '../components/ui';
-import { LprResult, VehicleType, ActivityLog } from '../types';
-import { RefreshCw, AlertOctagon, CheckCircle2, MoreHorizontal, Settings, Mic, Activity, Clock, Camera, History, FileText, AlertTriangle, ScanLine, MonitorPlay, RotateCcw } from 'lucide-react';
+import { LprResult, VehicleType, ActivityLog, ParkingSession, SessionStatus } from '../types';
+import { RefreshCw, AlertOctagon, CheckCircle2, MoreHorizontal, Settings, Mic, Activity, Clock, Camera, History, FileText, AlertTriangle, ScanLine, MonitorPlay, RotateCcw, Save } from 'lucide-react';
 
-const MOCK_PLATES = ['59T1-123.45', '30A-999.88', '51H-456.78', '60C-111.22', '29E-555.99'];
+const MOCK_PLATES = ['59T1-123.45', '30A-999.88', '51H-456.78', '60C-111.22', '29E-555.99', '50A-001.23', '59A-222.11'];
 
-// Realistic Image Sources (Specific Unsplash IDs for reliability)
+// Realistic Image Sources
 const CAR_IMAGES = [
-  'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=600', // White car rear
-  'https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&q=80&w=600', // Dark car parking
-  'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&q=80&w=600', // Mustang
-  'https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&q=80&w=600', // Car front
+  'https://images.unsplash.com/photo-1621929747188-0b4dc28498d2?auto=format&fit=crop&q=80&w=600', 
+  'https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&q=80&w=600', 
+  'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&q=80&w=600', 
+  'https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&q=80&w=600', 
+  'https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&q=80&w=600'
 ];
 
-// CCTV View: Parking entrance / Garage view
-const CCTV_FEED_URL = 'https://images.unsplash.com/photo-1486006920555-c77dcf18193c?auto=format&fit=crop&q=80&w=1200';
+// CCTV View
+const CCTV_FEED_URL = 'https://images.unsplash.com/photo-1623910398453-2c1a4b49071c?auto=format&fit=crop&q=80&w=1200';
 
 export const LiveLane: React.FC = () => {
   const [activeLane, setActiveLane] = useState<'Entry' | 'Exit'>('Entry');
@@ -24,7 +25,6 @@ export const LiveLane: React.FC = () => {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [recentSnapshots, setRecentSnapshots] = useState<{id: number, url: string, time: string}[]>([]);
   
-  // Ref for auto-scrolling logs
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   // Clock Timer
@@ -45,7 +45,37 @@ export const LiveLane: React.FC = () => {
       message,
       type
     };
-    setLogs(prev => [...prev.slice(-10), newLog]); // Keep last 10
+    setLogs(prev => [...prev.slice(-10), newLog]);
+  };
+
+  // --- LOGIC GIẢ LẬP & LƯU TRỮ ---
+  const saveToLocalStorage = (result: LprResult) => {
+    try {
+      // 1. Get existing sessions
+      const storedSessions = localStorage.getItem('weihu_sessions');
+      let sessions: ParkingSession[] = storedSessions ? JSON.parse(storedSessions) : [];
+
+      // 2. Create new session object
+      const newSession: ParkingSession = {
+        id: `S-${Date.now().toString().slice(-6)}`,
+        plate: result.plate,
+        entryTime: new Date().toLocaleString(),
+        lane: `Làn ${activeLane === 'Entry' ? 'Vào' : 'Ra'} 01`,
+        status: result.isViolation ? SessionStatus.VIOLATION : SessionStatus.ACTIVE, // Flag violation in status
+        imageUrl: result.imageUrl || '',
+        vehicleType: result.vehicleType,
+        engineDisplacement: result.engineDisplacement,
+        violationReason: result.violationReason
+      };
+
+      // 3. Save back to localStorage (prepend to top)
+      sessions = [newSession, ...sessions].slice(0, 100); // Keep last 100 records
+      localStorage.setItem('weihu_sessions', JSON.stringify(sessions));
+      
+      console.log("Saved session to localStorage:", newSession);
+    } catch (error) {
+      console.error("Failed to save to localStorage", error);
+    }
   };
 
   const simulateArrival = () => {
@@ -56,34 +86,72 @@ export const LiveLane: React.FC = () => {
 
     setTimeout(() => {
       const randomPlate = MOCK_PLATES[Math.floor(Math.random() * MOCK_PLATES.length)];
-      const isCar = Math.random() > 0.3;
+      // Random vehicle type
+      const isCar = Math.random() > 0.4;
+      const vehicleType = isCar ? VehicleType.CAR : VehicleType.MOTORBIKE;
+      
+      // --- LOGIC PHÂN KHỐI & VI PHẠM ---
+      let engineCC = '';
+      let isViolation = false;
+      let violationReason = '';
+      let ccValue = 0;
+
+      if (vehicleType === VehicleType.MOTORBIKE) {
+         // Simulate: 50cc (30%), 110cc (30%), 125cc (20%), 150cc (20%)
+         const rand = Math.random();
+         if (rand < 0.3) ccValue = 50;
+         else if (rand < 0.6) ccValue = 110;
+         else if (rand < 0.8) ccValue = 125;
+         else ccValue = 150;
+         
+         engineCC = `${ccValue}cc`;
+
+         // RULE: Xe máy > 50cc là vi phạm (Ví dụ khu vực trường học/nội bộ)
+         if (ccValue > 50) {
+            isViolation = true;
+            violationReason = `Xe máy trên 50cc (${ccValue}cc) bị hạn chế`;
+         }
+      } else {
+         // Car engine
+         engineCC = ['1.5L', '2.0L', '3.5L'][Math.floor(Math.random() * 3)];
+      }
+      
       const confidence = 0.85 + Math.random() * 0.14;
-      // Select a random real car image
       const imageUrl = CAR_IMAGES[Math.floor(Math.random() * CAR_IMAGES.length)];
       
       const result: LprResult = {
         plate: randomPlate,
         confidence: confidence,
-        vehicleType: isCar ? VehicleType.CAR : VehicleType.MOTORBIKE,
+        vehicleType: vehicleType,
         capturedAt: new Date().toLocaleTimeString(),
         isWhitelist: Math.random() > 0.5,
-        imageUrl: imageUrl
+        imageUrl: imageUrl,
+        engineDisplacement: engineCC,
+        isViolation: isViolation,
+        violationReason: violationReason
       };
 
       setLprData(result);
       setIsProcessing(false);
-      addLog(`Nhận diện biển số: ${randomPlate} (${Math.round(confidence * 100)}%)`, result.isWhitelist ? 'success' : 'warning');
+
+      // Save & Log
+      saveToLocalStorage(result);
       
-      // Add to recent snapshots
+      if (isViolation) {
+        addLog(`CẢNH BÁO: ${result.plate} - ${violationReason}`, 'error');
+      } else {
+        addLog(`Nhận diện: ${randomPlate} (${engineCC}) - OK`, result.isWhitelist ? 'success' : 'info');
+      }
+      
       setRecentSnapshots(prev => [
         { id: Date.now(), url: imageUrl, time: result.capturedAt },
         ...prev.slice(0, 3)
       ]);
     }, 1500);
   };
+  // ------------------------------------
 
   useEffect(() => {
-    // Initial simulation
     simulateArrival();
   }, []);
 
@@ -91,7 +159,7 @@ export const LiveLane: React.FC = () => {
     addLog(`Lệnh mở Barrier từ vận hành viên`, 'success');
     addLog(`Trạng thái Barrier: MỞ`, 'success');
     setTimeout(() => {
-       setLprData(null); // Clear after vehicle passes
+       setLprData(null); 
        addLog(`Vòng từ trống. Chờ xe tiếp theo.`, 'info');
     }, 2000);
   };
@@ -99,6 +167,7 @@ export const LiveLane: React.FC = () => {
   const handleReject = () => {
      addLog(`Từ chối vào cho xe ${lprData?.plate}`, 'error');
      setLprData(null);
+     // Note: In real app, you might want to update the last session status to 'Rejected' in localStorage
   };
 
   const handleIncident = () => {
@@ -148,8 +217,8 @@ export const LiveLane: React.FC = () => {
         
         {/* Left Column: Live Video Feed (8 cols) */}
         <div className="lg:col-span-8 flex flex-col gap-4 min-h-0">
-          {/* Main Video Card */}
-          <GlassCard className="flex-1 relative overflow-hidden bg-black flex items-center justify-center group border-white/10 shadow-2xl">
+          {/* Main Video Card - Using standard GlassCard styles */}
+          <GlassCard className="flex-1 relative overflow-hidden flex items-center justify-center group shadow-2xl">
             {/* Live Badge */}
             <div className="absolute top-4 left-4 z-10 flex items-center gap-2 px-3 py-1.5 bg-red-600/90 backdrop-blur rounded-md text-white text-xs font-bold uppercase tracking-wider animate-pulse shadow-lg">
               <div className="w-2 h-2 bg-white rounded-full"></div>
@@ -157,22 +226,20 @@ export const LiveLane: React.FC = () => {
             </div>
             
             {/* Camera Overlay Info */}
-            <div className="absolute top-4 right-4 z-10 text-right bg-black/60 backdrop-blur-md p-2 rounded-lg border border-white/10">
+            <div className="absolute top-4 right-4 z-10 text-right bg-black/40 backdrop-blur-md p-2 rounded-lg border border-white/10">
               <p className="text-xs font-mono text-primary-500 font-bold mb-0.5">CAM-01 [1080p]</p>
-              <div className="flex items-center gap-1.5 text-[10px] font-mono text-gray-400">
+              <div className="flex items-center gap-1.5 text-[10px] font-mono text-gray-200">
                  <MonitorPlay size={10} /> 30 FPS • 12mbps
               </div>
             </div>
 
-            {/* Simulated Live Feed */}
-            <div className="w-full h-full relative">
+            {/* Simulated Live Feed - Dark background strictly for video container */}
+            <div className="w-full h-full relative bg-gray-200 dark:bg-gray-900">
                <img 
                  src={CCTV_FEED_URL}
                  alt="Live Feed" 
-                 className="w-full h-full object-cover opacity-80"
+                 className="w-full h-full object-cover opacity-90"
                />
-               
-               {/* Scanning Line Effect */}
                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary-500/10 to-transparent animate-[scan_3s_ease-in-out_infinite] pointer-events-none"></div>
                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
             </div>
@@ -180,17 +247,12 @@ export const LiveLane: React.FC = () => {
             {/* AI Reticle Overlay */}
             <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 
               ${isProcessing ? 'w-64 h-32 opacity-100 scale-100' : 'w-72 h-40 opacity-0 scale-110'}`}>
-               
-               {/* Corners */}
                <div className="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-primary-500"></div>
                <div className="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-primary-500"></div>
                <div className="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-primary-500"></div>
                <div className="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-primary-500"></div>
-
-               {/* Center Crosshair */}
                <div className="w-full h-px bg-primary-500/30 absolute top-1/2 -translate-y-1/2"></div>
                <div className="h-full w-px bg-primary-500/30 absolute left-1/2 -translate-x-1/2"></div>
-               
                <div className="absolute -top-8 left-0 text-primary-500 text-xs font-mono font-bold bg-black/80 px-2 py-1 rounded border border-primary-500/30 flex items-center gap-2">
                  <ScanLine size={12} className="animate-spin" /> ĐANG PHÂN TÍCH...
                </div>
@@ -221,7 +283,7 @@ export const LiveLane: React.FC = () => {
             </div>
           </GlassCard>
 
-          {/* Recent Snapshots Strip */}
+          {/* Recent Snapshots */}
           <div className="h-28 grid grid-cols-5 gap-3">
              <div className="col-span-1 flex items-center justify-center bg-gray-100 dark:bg-white/5 rounded-xl border border-gray-200 dark:border-white/10 transition-colors">
                 <span className="text-[10px] text-gray-500 font-bold uppercase text-center">Ảnh chụp<br/>Gần đây</span>
@@ -244,13 +306,18 @@ export const LiveLane: React.FC = () => {
         {/* Right Column: AI Results & Operations (4 cols) */}
         <div className="lg:col-span-4 flex flex-col gap-4">
           
-          {/* AI Result Card */}
-          <GlassCard className="p-0 flex flex-col relative overflow-hidden shadow-2xl border-gray-200 dark:border-white/20 bg-white dark:bg-gray-900/80">
-             <div className="p-4 border-b border-gray-200 dark:border-white/10 flex justify-between items-center bg-gray-50 dark:bg-white/5">
-               <h3 className="text-gray-900 dark:text-white font-bold text-sm flex items-center gap-2">
-                 <Camera size={16} className="text-primary-500"/> Kết quả nhận diện
+          {/* AI Result Card - Dynamic Border for Violation */}
+          <GlassCard className={`p-0 flex flex-col relative overflow-hidden shadow-2xl bg-white dark:bg-gray-900/80 transition-colors duration-500
+             ${lprData?.isViolation ? 'border-2 border-red-500 animate-pulse' : 'border-gray-200 dark:border-white/20'}
+          `}>
+             <div className={`p-4 border-b flex justify-between items-center bg-gray-50 dark:bg-white/5
+                ${lprData?.isViolation ? 'border-red-500/30 bg-red-500/10' : 'border-gray-200 dark:border-white/10'}
+             `}>
+               <h3 className={`font-bold text-sm flex items-center gap-2 ${lprData?.isViolation ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                 {lprData?.isViolation ? <AlertTriangle size={16}/> : <Camera size={16} className="text-primary-500"/>}
+                 {lprData?.isViolation ? 'CẢNH BÁO VI PHẠM' : 'Kết quả nhận diện'}
                </h3>
-               {lprData && <Badge status={lprData.isWhitelist ? 'Monthly' : 'Active'} />}
+               {lprData && <Badge status={lprData.isViolation ? 'Issue' : (lprData.isWhitelist ? 'Monthly' : 'Active')} />}
              </div>
 
              <div className="p-4 flex flex-col gap-4">
@@ -259,9 +326,10 @@ export const LiveLane: React.FC = () => {
                  {lprData ? (
                    <>
                      <img src={lprData.imageUrl} className="w-full h-full object-cover" alt="Captured Plate" />
-                     {/* Simulated Plate Crop Overlay */}
-                     <div className="absolute bottom-2 right-2 w-24 h-8 bg-white/90 dark:bg-black/80 rounded border border-primary-500 overflow-hidden flex items-center justify-center shadow-lg">
-                        <span className="text-gray-900 dark:text-white font-mono font-bold text-xs">{lprData.plate}</span>
+                     <div className={`absolute bottom-2 right-2 w-24 h-8 bg-white/90 dark:bg-black/80 rounded border overflow-hidden flex items-center justify-center shadow-lg
+                        ${lprData.isViolation ? 'border-red-500' : 'border-primary-500'}
+                     `}>
+                        <span className={`font-mono font-bold text-xs ${lprData.isViolation ? 'text-red-600' : 'text-gray-900 dark:text-white'}`}>{lprData.plate}</span>
                      </div>
                    </>
                  ) : (
@@ -272,23 +340,38 @@ export const LiveLane: React.FC = () => {
                  )}
                </div>
 
-               {/* Plate Display */}
-               <div className="bg-gray-100 dark:bg-black/40 rounded-xl p-4 border border-gray-200 dark:border-white/10 text-center relative overflow-hidden transition-colors">
+               {/* Plate & Engine Specs */}
+               <div className={`bg-gray-100 dark:bg-black/40 rounded-xl p-4 border text-center relative overflow-hidden transition-colors
+                  ${lprData?.isViolation ? 'border-red-500/30 bg-red-500/5' : 'border-gray-200 dark:border-white/10'}
+               `}>
                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mb-1">BIỂN SỐ XE</p>
                  {lprData ? (
-                   <h2 className="text-3xl font-mono font-bold text-gray-900 dark:text-white tracking-widest drop-shadow-[0_0_10px_rgb(var(--primary)/0.5)]">
-                     {lprData.plate}
-                   </h2>
+                   <>
+                    <h2 className="text-3xl font-mono font-bold text-gray-900 dark:text-white tracking-widest drop-shadow-[0_0_10px_rgb(var(--primary)/0.5)]">
+                        {lprData.plate}
+                    </h2>
+                    
+                    {/* Engine Displacement Display */}
+                    <div className="mt-3 flex justify-center gap-2 flex-wrap">
+                        <span className="text-[10px] font-mono bg-primary-500/10 text-primary-500 px-2 py-0.5 rounded border border-primary-500/20">
+                            {lprData.vehicleType}
+                        </span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded border font-bold
+                            ${lprData.isViolation ? 'bg-red-500/10 text-red-600 border-red-500/20' : 'bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-300 border-transparent'}
+                        `}>
+                            Động cơ: {lprData.engineDisplacement}
+                        </span>
+                    </div>
+
+                    {/* Violation Reason */}
+                    {lprData.isViolation && (
+                        <div className="mt-2 text-xs text-red-600 dark:text-red-400 font-bold bg-red-100 dark:bg-red-900/20 p-2 rounded animate-pulse">
+                            ⚠️ {lprData.violationReason}
+                        </div>
+                    )}
+                   </>
                  ) : (
                    <h2 className="text-3xl font-mono font-bold text-gray-400 dark:text-gray-700 tracking-widest">---.---</h2>
-                 )}
-                 
-                 {lprData && (
-                   <div className="mt-3 flex justify-center gap-2">
-                      <span className="text-[10px] font-mono bg-primary-500/10 text-primary-500 px-2 py-0.5 rounded border border-primary-500/20">
-                        ĐỘ TIN CẬY: {Math.round(lprData.confidence * 100)}%
-                      </span>
-                   </div>
                  )}
                </div>
 
@@ -308,8 +391,10 @@ export const LiveLane: React.FC = () => {
                  </Button>
                  <Button 
                     onClick={handleOpenBarrier}
-                    disabled={!lprData}
-                    className="col-span-2 bg-primary-500 hover:bg-primary-600 text-white h-12 shadow-[0_0_20px_rgb(var(--primary)/0.4)] border border-transparent"
+                    disabled={!lprData || lprData.isViolation} // Disable open if violation (optional, but good for demo)
+                    className={`col-span-2 h-12 shadow-[0_0_20px_rgb(var(--primary)/0.4)] border border-transparent text-white
+                        ${lprData?.isViolation ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary-500 hover:bg-primary-600'}
+                    `}
                  >
                    MỞ BARRIER
                  </Button>

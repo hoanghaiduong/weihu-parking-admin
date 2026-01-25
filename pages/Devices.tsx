@@ -2,48 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { GlassCard, Button, Input, Checkbox, Badge } from '../components/ui';
 import { Server, Plus, RefreshCw, Camera, Settings, Trash2, Save, MonitorPlay, Activity, List, LayoutGrid, Maximize2, Wifi, CheckCircle2, AlertTriangle, X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Minus, Video, Aperture, MousePointer2 } from 'lucide-react';
-
-// --- Types ---
-interface CameraDevice {
-  id: string;
-  name: string;
-  ip: string;
-  port: string;
-  username?: string;
-  password?: string;
-  rtspUrl: string;
-  status: 'Online' | 'Offline' | 'Connecting';
-  model: string;
-  type: 'LPR' | 'Overview' | 'PTZ';
-  image: string; // Simulation image
-}
-
-interface IoTDevice {
-  id: string;
-  name: string;
-  type: string;
-  status: 'Online' | 'Offline';
-}
-
-// --- Mock Data ---
-const MOCK_CAMERAS: CameraDevice[] = [
-  { id: 'CAM-01', name: 'Cổng Chính (LPR In)', ip: '192.168.1.101', port: '554', rtspUrl: 'rtsp://192.168.1.101/stream1', status: 'Online', model: 'Hikvision ANPR', type: 'LPR', image: 'https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&q=80&w=800' },
-  { id: 'CAM-02', name: 'Cổng Ra (LPR Out)', ip: '192.168.1.102', port: '554', rtspUrl: 'rtsp://192.168.1.102/stream1', status: 'Online', model: 'Dahua AI', type: 'LPR', image: 'https://images.unsplash.com/photo-1590674899505-245784c9cc57?auto=format&fit=crop&q=80&w=800' },
-  { id: 'CAM-03', name: 'Toàn cảnh Hầm B1', ip: '192.168.1.103', port: '554', rtspUrl: 'rtsp://192.168.1.103/stream1', status: 'Online', model: 'KBVision PTZ', type: 'Overview', image: 'https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?auto=format&fit=crop&q=80&w=800' },
-  { id: 'CAM-04', name: 'Sảnh Chờ Thang Máy', ip: '192.168.1.104', port: '8000', rtspUrl: 'rtsp://192.168.1.104/live', status: 'Offline', model: 'Ezviz', type: 'Overview', image: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&q=80&w=800' },
-];
-
-const MOCK_IOT: IoTDevice[] = [
-  { id: 'BAR-01', name: 'Barrier Controller In', type: 'PLC', status: 'Online' },
-  { id: 'LED-01', name: 'Matrix Display', type: 'LED', status: 'Online' },
-];
+import { DataStore } from '../utils/dataStore';
+import { CameraDevice, IoTDevice } from '../types';
 
 // --- Expanded Camera View Component (Using Portal) ---
 const ExpandedCameraView: React.FC<{
   camera: CameraDevice;
   onClose: () => void;
 }> = ({ camera, onClose }) => {
-  // Use Portal to render outside the main DOM hierarchy to avoid z-index/overflow issues with Sidebar
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
         {/* Backdrop */}
@@ -97,7 +63,7 @@ const ExpandedCameraView: React.FC<{
                        </div>
                     </div>
 
-                    {/* Bottom Control Bar (Theme Aware) */}
+                    {/* Bottom Control Bar */}
                     <div className="h-20 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-white/10 flex items-center justify-center gap-8 shrink-0 relative z-10">
                         <ControlButton icon={<Aperture size={20} />} label="Snapshot" />
                         <ControlButton icon={<Video size={20} />} label="Record" active />
@@ -107,7 +73,7 @@ const ExpandedCameraView: React.FC<{
                     </div>
                 </div>
 
-                {/* Right: Sidebar (Theme Aware) */}
+                {/* Right: Sidebar */}
                 <div className="w-80 bg-gray-50 dark:bg-gray-800/50 border-l border-gray-200 dark:border-white/10 flex flex-col shrink-0">
                     {/* PTZ Section */}
                     <div className="p-6 border-b border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900">
@@ -195,10 +161,8 @@ const CameraModal: React.FC<{
   const handleTest = () => {
     setIsTesting(true);
     setTestStatus('idle');
-    // Simulate network delay
     setTimeout(() => {
       setIsTesting(false);
-      // Mock success if IP is entered
       if (formData.ip) setTestStatus('success');
       else setTestStatus('failed');
     }, 1500);
@@ -288,14 +252,20 @@ const CameraModal: React.FC<{
 export const Devices: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'cameras' | 'iot'>('cameras');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [gridSize, setGridSize] = useState<2 | 3 | 4>(2); // 2x2, 3x3, 4x4
+  const [gridSize, setGridSize] = useState<2 | 3 | 4>(2);
   
-  const [cameras, setCameras] = useState<CameraDevice[]>(MOCK_CAMERAS);
+  const [cameras, setCameras] = useState<CameraDevice[]>([]);
+  const [iotDevices, setIotDevices] = useState<IoTDevice[]>([]);
+  
   const [editingCam, setEditingCam] = useState<CameraDevice | undefined>(undefined);
-  const [expandedCam, setExpandedCam] = useState<CameraDevice | null>(null); // For fullscreen mode
+  const [expandedCam, setExpandedCam] = useState<CameraDevice | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // CRUD Actions
+  useEffect(() => {
+    setCameras(DataStore.cameras.getAll());
+    setIotDevices(DataStore.iot.getAll());
+  }, [isModalOpen]);
+
   const handleAdd = () => {
     setEditingCam(undefined);
     setIsModalOpen(true);
@@ -308,7 +278,8 @@ export const Devices: React.FC = () => {
 
   const handleDelete = (id: string) => {
     if (confirm('Bạn có chắc chắn muốn xóa thiết bị này?')) {
-      setCameras(prev => prev.filter(c => c.id !== id));
+      DataStore.cameras.delete(id);
+      setCameras(DataStore.cameras.getAll());
     }
   };
 
@@ -317,13 +288,8 @@ export const Devices: React.FC = () => {
   };
 
   const handleSaveCamera = (newCam: CameraDevice) => {
-    setCameras(prev => {
-      const exists = prev.find(c => c.id === newCam.id);
-      if (exists) {
-        return prev.map(c => c.id === newCam.id ? newCam : c);
-      }
-      return [...prev, newCam];
-    });
+    DataStore.cameras.save(newCam);
+    setCameras(DataStore.cameras.getAll());
   };
 
   return (
@@ -364,7 +330,7 @@ export const Devices: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 min-h-0 flex flex-col">
         
-        {/* Tabs (Only visible in List mode or if we want to switch device types) */}
+        {/* Tabs */}
         {viewMode === 'list' && (
           <div className="flex gap-1 bg-gray-100 dark:bg-white/5 p-1 rounded-xl w-fit mb-4">
             <button 
@@ -385,7 +351,6 @@ export const Devices: React.FC = () => {
         {/* --- VIEW MODE: GRID (VIDEO WALL) --- */}
         {viewMode === 'grid' && activeTab === 'cameras' && (
            <div className="flex-1 flex flex-col min-h-0 gap-4">
-              {/* Grid Toolbar - UPDATED to use Theme Context */}
               <div className="flex items-center justify-between bg-white dark:bg-gray-900 p-2 rounded-xl border border-gray-200 dark:border-white/10 shadow-sm">
                  <div className="flex items-center gap-2 px-2">
                     <MonitorPlay size={18} className="text-primary-500"/>
@@ -411,26 +376,21 @@ export const Devices: React.FC = () => {
                  </div>
               </div>
 
-              {/* Grid Container - UPDATED background for light mode support */}
               <div className="flex-1 min-h-0 bg-gray-50 dark:bg-black/40 rounded-2xl border border-gray-200 dark:border-white/5 p-2 overflow-y-auto custom-scrollbar shadow-inner">
                  <div className={`grid gap-2 h-full ${
                     gridSize === 2 ? 'grid-cols-2 grid-rows-2' : 
                     gridSize === 3 ? 'grid-cols-3 grid-rows-3' : 
                     'grid-cols-4 grid-rows-4'
                  }`}>
-                    {/* Render Cameras */}
                     {cameras.map((cam) => (
                        <div key={cam.id} className="relative group bg-gray-200 dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-800 hover:border-primary-500 transition-colors shadow-sm">
-                          {/* Video/Image Feed */}
                           <img src={cam.image} alt={cam.name} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity" />
                           
-                          {/* Overlay Info */}
                           <div className="absolute top-2 left-2 bg-white/80 dark:bg-black/60 backdrop-blur px-2 py-1 rounded flex items-center gap-2 shadow-sm z-10">
                              <div className={`w-2 h-2 rounded-full ${cam.status === 'Online' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
                              <span className="text-[10px] font-mono font-bold text-gray-900 dark:text-white truncate max-w-[100px]">{cam.name}</span>
                           </div>
 
-                          {/* Quick Actions Overlay (On Hover) */}
                           <div className="absolute inset-0 bg-black/30 dark:bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 backdrop-blur-[1px]">
                              <button 
                                 onClick={() => handleEdit(cam)}
@@ -448,14 +408,12 @@ export const Devices: React.FC = () => {
                              </button>
                           </div>
 
-                          {/* Tech Overlay */}
                           <div className="absolute bottom-2 right-2 text-[9px] font-mono text-gray-700 dark:text-gray-300 bg-white/80 dark:bg-black/80 px-1.5 py-0.5 rounded border border-gray-200 dark:border-white/10 z-10">
                              RTSP: {cam.port} • 1080P
                           </div>
                        </div>
                     ))}
                     
-                    {/* Empty Slots */}
                     {Array.from({ length: Math.max(0, (gridSize * gridSize) - cameras.length) }).map((_, i) => (
                        <div key={`empty-${i}`} className="bg-gray-100 dark:bg-white/5 rounded-lg border border-dashed border-gray-300 dark:border-white/10 flex items-center justify-center text-gray-400 dark:text-gray-600">
                           <span className="text-xs font-mono">NO SIGNAL</span>
@@ -471,14 +429,12 @@ export const Devices: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto custom-scrollbar">
              {cameras.map(cam => (
                <GlassCard key={cam.id} className="p-0 overflow-hidden flex flex-col group">
-                 {/* Preview Header */}
                  <div className="h-32 bg-gray-200 dark:bg-gray-900 relative cursor-pointer" onClick={() => handleExpand(cam)}>
                     <img src={cam.image} className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-all" alt="Preview"/>
                     <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
                     <div className="absolute top-2 right-2">
                        <Badge status={cam.status === 'Online' ? 'Active' : 'Issue'} />
                     </div>
-                    {/* Play Icon Overlay */}
                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="w-10 h-10 bg-black/50 backdrop-blur rounded-full flex items-center justify-center text-white border border-white/20">
                             <Maximize2 size={16}/>
@@ -486,7 +442,6 @@ export const Devices: React.FC = () => {
                     </div>
                  </div>
                  
-                 {/* Body */}
                  <div className="p-4 flex-1 flex flex-col">
                     <div className="flex justify-between items-start mb-2">
                        <h4 className="font-bold text-gray-900 dark:text-white truncate" title={cam.name}>{cam.name}</h4>
@@ -499,7 +454,6 @@ export const Devices: React.FC = () => {
 
                     <div className="flex gap-2 mt-auto">
                        <Button variant="secondary" className="flex-1 h-9 text-xs" onClick={() => handleEdit(cam)}><Settings size={14}/> Cấu hình</Button>
-                       {/* Fixed Delete Button size/icon visibility */}
                        <Button variant="danger" className="h-9 px-3 flex items-center justify-center" onClick={() => handleDelete(cam.id)} title="Xóa thiết bị">
                           <Trash2 size={16}/>
                        </Button>
@@ -508,7 +462,6 @@ export const Devices: React.FC = () => {
                </GlassCard>
              ))}
              
-             {/* Add New Card Button */}
              <button 
                 onClick={handleAdd}
                 className="h-[250px] rounded-2xl border-2 border-dashed border-gray-300 dark:border-white/10 flex flex-col items-center justify-center text-gray-400 hover:text-primary-500 hover:border-primary-500 hover:bg-primary-500/5 transition-all gap-2"
@@ -524,7 +477,7 @@ export const Devices: React.FC = () => {
         {/* --- IOT DEVICES LIST --- */}
         {viewMode === 'list' && activeTab === 'iot' && (
            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-             {MOCK_IOT.map(dev => (
+             {iotDevices.map(dev => (
                 <GlassCard key={dev.id} className="p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                      <div className="p-2 bg-blue-500/20 rounded-lg text-blue-600 dark:text-blue-400"><Server size={20}/></div>
@@ -544,7 +497,6 @@ export const Devices: React.FC = () => {
 
       </div>
 
-      {/* Camera Edit/Add Modal */}
       <CameraModal 
          isOpen={isModalOpen} 
          onClose={() => setIsModalOpen(false)} 
@@ -552,7 +504,6 @@ export const Devices: React.FC = () => {
          onSave={handleSaveCamera}
       />
 
-      {/* Expanded Camera View */}
       {expandedCam && (
         <ExpandedCameraView 
           camera={expandedCam} 

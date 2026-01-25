@@ -1,32 +1,118 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GlassCard, Button, Input, Badge } from '../components/ui';
-import { Search, Filter, Plus, Car, Calendar, User, MoreVertical, AlertCircle, ShieldBan, FileWarning } from 'lucide-react';
+import { Search, Filter, Plus, Car, Calendar, User, MoreVertical, AlertCircle, ShieldBan, FileWarning, Save, X, Trash2 } from 'lucide-react';
+import { DataStore } from '../utils/dataStore';
+import { Vehicle, BlacklistVehicle } from '../types';
 
-interface Vehicle {
-  id: string;
-  plate: string;
-  owner: string;
-  phone: string;
-  type: 'Car' | 'Motorbike' | 'Truck';
-  plan: 'Monthly' | 'VIP' | 'Resident';
-  expiryDate: string;
-  status: 'Active' | 'Expiring Soon' | 'Expired';
-}
+// --- Vehicle Modal ---
+const VehicleModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  vehicle?: Vehicle;
+  onSave: (v: Vehicle) => void;
+  onDelete: (id: string) => void;
+}> = ({ isOpen, onClose, vehicle, onSave, onDelete }) => {
+  const [form, setForm] = useState<Partial<Vehicle>>({});
 
-const MOCK_VEHICLES: Vehicle[] = [
-  { id: 'V-001', plate: '59T1-123.45', owner: 'Nguyễn Văn A', phone: '0909123456', type: 'Car', plan: 'VIP', expiryDate: '2024-12-31', status: 'Active' },
-  { id: 'V-002', plate: '29A-999.88', owner: 'Trần Thị B', phone: '0912333444', type: 'Car', plan: 'Monthly', expiryDate: '2023-11-05', status: 'Expiring Soon' },
-  { id: 'V-003', plate: '51H-456.78', owner: 'Lê Văn C', phone: '0988777666', type: 'Motorbike', plan: 'Resident', expiryDate: '2023-10-01', status: 'Expired' },
-];
+  useEffect(() => {
+    setForm(vehicle || { plate: '', owner: '', phone: '', type: 'Car', plan: 'Monthly', expiryDate: '', status: 'Active' });
+  }, [vehicle, isOpen]);
 
-const MOCK_BLACKLIST = [
-  { id: 'BL-01', plate: '30X-111.11', reason: 'Nợ phí kéo dài', addedBy: 'Admin', date: '2023-10-01' },
-  { id: 'BL-02', plate: '60Z-999.99', reason: 'Gây rối trật tự', addedBy: 'Security', date: '2023-09-15' },
-];
+  if (!isOpen) return null;
+
+  const handleSubmit = () => {
+    if (!form.plate) return;
+    onSave({
+      ...form,
+      id: form.id || `V-${Date.now()}`,
+    } as Vehicle);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-white/10 p-6 animate-fade-in-up">
+        <h3 className="text-xl font-bold mb-4">{vehicle ? 'Cập nhật Xe' : 'Đăng ký Xe mới'}</h3>
+        <div className="space-y-4">
+          <Input label="Biển số" value={form.plate} onChange={e => setForm({...form, plate: e.target.value})} placeholder="VD: 59T1-12345" />
+          <div className="grid grid-cols-2 gap-4">
+             <Input label="Chủ xe" value={form.owner} onChange={e => setForm({...form, owner: e.target.value})} />
+             <Input label="SĐT" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+             <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Loại xe</label>
+                <select className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2" value={form.type} onChange={e => setForm({...form, type: e.target.value as any})}>
+                   <option value="Car">Ô tô</option>
+                   <option value="Motorbike">Xe máy</option>
+                   <option value="Truck">Xe tải</option>
+                </select>
+             </div>
+             <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Gói cước</label>
+                <select className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2" value={form.plan} onChange={e => setForm({...form, plan: e.target.value as any})}>
+                   <option value="Monthly">Vé Tháng</option>
+                   <option value="VIP">VIP</option>
+                   <option value="Resident">Cư dân</option>
+                </select>
+             </div>
+          </div>
+          <Input label="Ngày hết hạn" type="date" value={form.expiryDate} onChange={e => setForm({...form, expiryDate: e.target.value})} />
+        </div>
+        <div className="mt-6 flex justify-between gap-3">
+           {vehicle && <Button variant="danger" onClick={() => { onDelete(vehicle.id); onClose(); }}><Trash2 size={16}/></Button>}
+           <div className="flex gap-2 ml-auto">
+             <Button variant="secondary" onClick={onClose}>Hủy</Button>
+             <Button onClick={handleSubmit}>Lưu</Button>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const Vehicles: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'registered' | 'blacklist'>('registered');
   const [searchTerm, setSearchTerm] = useState('');
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [blacklist, setBlacklist] = useState<BlacklistVehicle[]>([]);
+  
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<Vehicle | undefined>(undefined);
+
+  useEffect(() => {
+    setVehicles(DataStore.vehicles.getAll());
+    setBlacklist(DataStore.blacklist.getAll());
+  }, [isModalOpen]);
+
+  const handleSaveVehicle = (v: Vehicle) => {
+    DataStore.vehicles.save(v);
+    setVehicles(DataStore.vehicles.getAll());
+  };
+
+  const handleDeleteVehicle = (id: string) => {
+    DataStore.vehicles.delete(id);
+    setVehicles(DataStore.vehicles.getAll());
+  };
+
+  const openAddModal = () => {
+    setEditingVehicle(undefined);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (v: Vehicle) => {
+    setEditingVehicle(v);
+    setIsModalOpen(true);
+  }
+
+  const removeBlacklist = (id: string) => {
+    if(confirm('Gỡ bỏ xe khỏi danh sách đen?')) {
+      DataStore.blacklist.delete(id);
+      setBlacklist(DataStore.blacklist.getAll());
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -46,7 +132,7 @@ export const Vehicles: React.FC = () => {
         </div>
         <div className="flex gap-2">
            <Button variant="danger" className="shadow-none border-red-200 dark:border-red-900"><ShieldBan size={16}/> Báo cáo xe vi phạm</Button>
-           <Button className="shadow-[0_0_20px_rgba(132,204,22,0.3)]"><Plus size={18} /> Đăng ký xe mới</Button>
+           <Button className="shadow-[0_0_20px_rgba(132,204,22,0.3)]" onClick={openAddModal}><Plus size={18} /> Đăng ký xe mới</Button>
         </div>
       </div>
 
@@ -104,7 +190,7 @@ export const Vehicles: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {MOCK_VEHICLES.map((v) => (
+                {vehicles.map((v) => (
                   <tr key={v.id} className="border-b border-gray-200 dark:border-white/5 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group">
                     <td className="p-4">
                       <div className="flex items-center gap-3">
@@ -142,7 +228,7 @@ export const Vehicles: React.FC = () => {
                       </span>
                     </td>
                     <td className="p-4 text-right">
-                      <button className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
+                      <button onClick={() => openEditModal(v)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-white transition-colors">
                         <MoreVertical size={16} />
                       </button>
                     </td>
@@ -171,14 +257,14 @@ export const Vehicles: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="text-sm">
-                {MOCK_BLACKLIST.map((v) => (
+                {blacklist.map((v) => (
                   <tr key={v.id} className="border-b border-gray-200 dark:border-white/5 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
                     <td className="p-4 font-mono font-bold text-red-600 dark:text-red-400 text-lg">{v.plate}</td>
                     <td className="p-4 font-bold text-gray-800 dark:text-gray-200">{v.reason}</td>
                     <td className="p-4 text-gray-600 dark:text-gray-400">{v.addedBy}</td>
                     <td className="p-4 text-gray-600 dark:text-gray-400">{v.date}</td>
                     <td className="p-4 text-right">
-                      <Button variant="secondary" className="text-xs h-8">Gỡ bỏ</Button>
+                      <Button variant="secondary" className="text-xs h-8" onClick={() => removeBlacklist(v.id)}>Gỡ bỏ</Button>
                     </td>
                   </tr>
                 ))}
@@ -187,6 +273,14 @@ export const Vehicles: React.FC = () => {
           </div>
         )}
       </GlassCard>
+
+      <VehicleModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        vehicle={editingVehicle}
+        onSave={handleSaveVehicle}
+        onDelete={handleDeleteVehicle}
+      />
     </div>
   );
 };

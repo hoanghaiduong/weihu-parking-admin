@@ -1,66 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { GlassCard, Button, Input, Checkbox } from '../components/ui';
-import { MapPin, Plus, Server, Car, AlertCircle, ExternalLink, X, Save, Clock, Activity, PieChart as PieIcon, BarChart3, Users } from 'lucide-react';
+import { MapPin, Plus, Server, Car, AlertCircle, ExternalLink, X, Save, Clock, Activity, PieChart as PieIcon, BarChart3, Trash2 } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
-
-interface Site {
-  id: string;
-  name: string;
-  address: string;
-  capacityCar: number;
-  capacityMoto: number;
-  occupiedCar: number;
-  occupiedMoto: number;
-  status: 'Online' | 'Offline' | 'Maintenance';
-  cameras: number;
-  barriers: number;
-  image: string;
-}
-
-const MOCK_SITES: Site[] = [
-  { 
-    id: 'SITE-01', 
-    name: 'Weihu Main Plaza A', 
-    address: '123 Tech Avenue, District 1', 
-    capacityCar: 500,
-    capacityMoto: 1200, 
-    occupiedCar: 412,
-    occupiedMoto: 850,
-    status: 'Online',
-    cameras: 12,
-    barriers: 4,
-    // Modern Building / Plaza
-    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800'
-  },
-  { 
-    id: 'SITE-02', 
-    name: 'Weihu Tower B (Hầm)', 
-    address: '456 Innovation Rd, District 3', 
-    capacityCar: 200,
-    capacityMoto: 500, 
-    occupiedCar: 45,
-    occupiedMoto: 120,
-    status: 'Online',
-    cameras: 6,
-    barriers: 2,
-    // Underground Parking
-    image: 'https://images.unsplash.com/photo-1590674899505-245784c9cc57?auto=format&fit=crop&q=80&w=800' 
-  },
-  { 
-    id: 'SITE-03', 
-    name: 'West Lake Campus (Ngoài trời)', 
-    address: '789 Lake View, Tay Ho', 
-    capacityCar: 800,
-    capacityMoto: 2000, 
-    occupiedCar: 0,
-    occupiedMoto: 0,
-    status: 'Offline',
-    cameras: 24,
-    barriers: 8,
-    // Outdoor Parking
-    image: 'https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?auto=format&fit=crop&q=80&w=800' 
-  },
-];
+import { DataStore } from '../utils/dataStore';
+import { Site } from '../types';
 
 const COLORS = ['#84CC16', '#3b82f6', '#f97316', '#e5e7eb'];
 
@@ -69,25 +13,47 @@ const SiteModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   site?: Site;
-}> = ({ isOpen, onClose, site }) => {
+  onSave: (site: Site) => void;
+  onDelete: (id: string) => void;
+}> = ({ isOpen, onClose, site, onSave, onDelete }) => {
   const [activeTab, setActiveTab] = useState<'info' | 'stats'>('info');
+  const [formData, setFormData] = useState<Partial<Site>>({});
+
+  useEffect(() => {
+    if (site) {
+      setFormData(site);
+    } else {
+      setFormData({
+        name: '', address: '', capacityCar: 100, capacityMoto: 200, occupiedCar: 0, occupiedMoto: 0, 
+        status: 'Online', cameras: 0, barriers: 0, 
+        image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800'
+      });
+    }
+  }, [site, isOpen]);
 
   if (!isOpen) return null;
 
-  // Mock Stats Data for Charts
-  const capacityData = site ? [
-    { name: 'Ô tô đã gửi', value: site.occupiedCar },
-    { name: 'Xe máy đã gửi', value: site.occupiedMoto },
-    { name: 'Trống', value: (site.capacityCar + site.capacityMoto) - (site.occupiedCar + site.occupiedMoto) }
-  ] : [];
+  const handleSubmit = () => {
+    const newSite = {
+      ...formData,
+      id: formData.id || `SITE-${Math.floor(Math.random() * 10000)}`,
+    } as Site;
+    onSave(newSite);
+    onClose();
+  };
 
-  const hourlyData = [
-    { hour: '8h', in: 40, out: 10 },
-    { hour: '10h', in: 60, out: 20 },
-    { hour: '12h', in: 20, out: 50 },
-    { hour: '14h', in: 30, out: 30 },
-    { hour: '16h', in: 10, out: 60 },
-    { hour: '18h', in: 5, out: 80 },
+  const handleDelete = () => {
+    if (formData.id && confirm("Bạn có chắc chắn xóa bãi xe này?")) {
+      onDelete(formData.id);
+      onClose();
+    }
+  };
+
+  // Stats Logic
+  const capacityData = [
+    { name: 'Ô tô đã gửi', value: formData.occupiedCar || 0 },
+    { name: 'Xe máy đã gửi', value: formData.occupiedMoto || 0 },
+    { name: 'Trống', value: ((formData.capacityCar || 0) + (formData.capacityMoto || 0)) - ((formData.occupiedCar || 0) + (formData.occupiedMoto || 0)) }
   ];
 
   return (
@@ -100,9 +66,9 @@ const SiteModal: React.FC<{
           <div>
             <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <MapPin className="text-primary-500" /> 
-              {site ? site.name : 'Thêm Bãi xe mới'}
+              {site ? 'Cấu hình Bãi xe' : 'Thêm Bãi xe mới'}
             </h3>
-            <p className="text-sm text-gray-500">{site ? site.address : 'Thiết lập thông số vận hành'}</p>
+            <p className="text-sm text-gray-500">{formData.address || 'Thiết lập thông số vận hành'}</p>
           </div>
           <button onClick={onClose}><X className="text-gray-400 hover:text-gray-900 dark:hover:text-white" /></button>
         </div>
@@ -129,29 +95,31 @@ const SiteModal: React.FC<{
         <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
           
           {/* TAB: INFO */}
-          {activeTab === 'info' && (
+          {(activeTab === 'info' || !site) && (
             <div className="space-y-6">
-              {/* General Info */}
               <div className="space-y-4">
                 <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase border-b border-gray-200 dark:border-white/10 pb-2">Thông tin cơ bản</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input label="Tên Khu vực" defaultValue={site?.name} />
-                  <Input label="Mã Site ID" defaultValue={site?.id} disabled className="opacity-70"/>
+                  <Input label="Tên Khu vực" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                  <Input label="Mã Site ID" value={formData.id} disabled className="opacity-70" placeholder="Auto-generated"/>
                 </div>
-                <Input label="Địa chỉ vật lý" defaultValue={site?.address} icon={<MapPin size={16}/>} />
+                <Input label="Địa chỉ vật lý" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} icon={<MapPin size={16}/>} />
                 <div className="flex items-center gap-4">
                    <div className="flex-1">
                      <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Trạng thái</label>
-                     <select className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary-500">
-                        <option>Đang hoạt động (Online)</option>
-                        <option>Bảo trì (Maintenance)</option>
-                        <option>Ngừng hoạt động (Offline)</option>
+                     <select 
+                        className="w-full bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/10 text-gray-900 dark:text-gray-200 rounded-xl px-4 py-2.5 focus:outline-none focus:border-primary-500"
+                        value={formData.status}
+                        onChange={e => setFormData({...formData, status: e.target.value as any})}
+                     >
+                        <option value="Online">Đang hoạt động (Online)</option>
+                        <option value="Maintenance">Bảo trì (Maintenance)</option>
+                        <option value="Offline">Ngừng hoạt động (Offline)</option>
                      </select>
                    </div>
                 </div>
               </div>
 
-              {/* Capacity Config */}
               <div className="space-y-4">
                 <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase border-b border-gray-200 dark:border-white/10 pb-2 flex items-center gap-2">
                    <Activity size={16}/> Quản lý Sức chứa
@@ -161,35 +129,16 @@ const SiteModal: React.FC<{
                       <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 font-bold">
                          <Car size={18}/> Ô tô (Car)
                       </div>
-                      <Input label="Tổng chỗ" type="number" defaultValue={site?.capacityCar.toString()} />
-                      <div className="flex items-center justify-between">
-                         <span className="text-xs text-gray-500">Ngưỡng cảnh báo đầy</span>
-                         <span className="text-xs font-bold text-blue-500">95%</span>
-                      </div>
-                      <input type="range" className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer" defaultValue="95"/>
+                      <Input label="Tổng chỗ" type="number" value={formData.capacityCar} onChange={e => setFormData({...formData, capacityCar: Number(e.target.value)})} />
+                      <Input label="Đã gửi" type="number" value={formData.occupiedCar} onChange={e => setFormData({...formData, occupiedCar: Number(e.target.value)})} />
                    </div>
                    <div className="p-4 bg-orange-500/5 border border-orange-500/10 rounded-xl space-y-3">
                       <div className="flex items-center gap-2 text-orange-600 dark:text-orange-400 font-bold">
                          <Car size={18}/> Xe máy (Moto)
                       </div>
-                      <Input label="Tổng chỗ" type="number" defaultValue={site?.capacityMoto.toString()} />
-                      <div className="flex items-center justify-between">
-                         <span className="text-xs text-gray-500">Ngưỡng cảnh báo đầy</span>
-                         <span className="text-xs font-bold text-orange-500">90%</span>
-                      </div>
-                      <input type="range" className="w-full h-1 bg-gray-200 rounded-lg appearance-none cursor-pointer" defaultValue="90"/>
+                      <Input label="Tổng chỗ" type="number" value={formData.capacityMoto} onChange={e => setFormData({...formData, capacityMoto: Number(e.target.value)})} />
+                      <Input label="Đã gửi" type="number" value={formData.occupiedMoto} onChange={e => setFormData({...formData, occupiedMoto: Number(e.target.value)})} />
                    </div>
-                </div>
-              </div>
-
-              {/* Operation Hours */}
-              <div className="space-y-4">
-                 <h4 className="text-sm font-bold text-gray-900 dark:text-white uppercase border-b border-gray-200 dark:border-white/10 pb-2 flex items-center gap-2">
-                   <Clock size={16}/> Giờ hoạt động
-                </h4>
-                <div className="flex items-center gap-4">
-                   <Checkbox label="Hoạt động 24/7" checked={true} />
-                   <Checkbox label="Cho phép gửi qua đêm" checked={true} />
                 </div>
               </div>
             </div>
@@ -198,75 +147,26 @@ const SiteModal: React.FC<{
           {/* TAB: STATS */}
           {activeTab === 'stats' && site && (
              <div className="space-y-6">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Occupancy Pie Chart */}
-                  <div className="bg-gray-50 dark:bg-white/5 rounded-xl p-4 border border-gray-200 dark:border-white/10">
-                     <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
-                        <PieIcon size={16}/> Tỷ lệ Lấp đầy Hiện tại
-                     </h4>
-                     <div className="h-64 relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                           <PieChart>
-                              <Pie 
-                                data={capacityData} 
-                                cx="50%" cy="50%" 
-                                innerRadius={60} outerRadius={80} 
-                                paddingAngle={5} dataKey="value"
-                              >
-                                 {capacityData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0}/>
-                                 ))}
-                              </Pie>
-                              <Tooltip contentStyle={{ borderRadius: '8px' }} />
-                           </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                           <span className="text-2xl font-bold text-gray-900 dark:text-white">
-                              {Math.round(((site.occupiedCar + site.occupiedMoto) / (site.capacityCar + site.capacityMoto)) * 100)}%
-                           </span>
-                           <span className="block text-xs text-gray-500">Full</span>
-                        </div>
-                     </div>
-                     <div className="flex justify-center gap-4 mt-2 text-xs">
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#84CC16]"></div> Ô tô</div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-[#3b82f6]"></div> Xe máy</div>
-                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-gray-300"></div> Trống</div>
-                     </div>
-                  </div>
-
-                  {/* Hourly Traffic Bar Chart */}
-                  <div className="bg-gray-50 dark:bg-white/5 rounded-xl p-4 border border-gray-200 dark:border-white/10">
-                     <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
-                        <BarChart3 size={16}/> Lưu lượng xe theo giờ (Hôm nay)
-                     </h4>
-                     <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                           <BarChart data={hourlyData}>
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                              <XAxis dataKey="hour" fontSize={10} axisLine={false} tickLine={false} />
-                              <YAxis fontSize={10} axisLine={false} tickLine={false} />
-                              <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px' }} />
-                              <Bar dataKey="in" name="Vào" fill="#84CC16" radius={[4, 4, 0, 0]} barSize={20} />
-                              <Bar dataKey="out" name="Ra" fill="#f97316" radius={[4, 4, 0, 0]} barSize={20} />
-                           </BarChart>
-                        </ResponsiveContainer>
-                     </div>
-                  </div>
-               </div>
-               
-               {/* Quick Stats Cards */}
-               <div className="grid grid-cols-3 gap-4">
-                  <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-xl text-center">
-                     <div className="text-xs text-blue-600 dark:text-blue-400 uppercase font-bold">Lượt xe vào</div>
-                     <div className="text-xl font-bold text-gray-900 dark:text-white">1,240</div>
-                  </div>
-                  <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-xl text-center">
-                     <div className="text-xs text-orange-600 dark:text-orange-400 uppercase font-bold">Lượt xe ra</div>
-                     <div className="text-xl font-bold text-gray-900 dark:text-white">980</div>
-                  </div>
-                  <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
-                     <div className="text-xs text-green-600 dark:text-green-400 uppercase font-bold">Doanh thu</div>
-                     <div className="text-xl font-bold text-gray-900 dark:text-white">12.5M</div>
+               <div className="bg-gray-50 dark:bg-white/5 rounded-xl p-4 border border-gray-200 dark:border-white/10">
+                  <h4 className="text-sm font-bold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
+                    <PieIcon size={16}/> Tỷ lệ Lấp đầy Hiện tại
+                  </h4>
+                  <div className="h-64 relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie 
+                            data={capacityData} 
+                            cx="50%" cy="50%" 
+                            innerRadius={60} outerRadius={80} 
+                            paddingAngle={5} dataKey="value"
+                          >
+                              {capacityData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} strokeWidth={0}/>
+                              ))}
+                          </Pie>
+                          <Tooltip contentStyle={{ borderRadius: '8px' }} />
+                        </PieChart>
+                    </ResponsiveContainer>
                   </div>
                </div>
              </div>
@@ -275,9 +175,12 @@ const SiteModal: React.FC<{
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-200 dark:border-white/10 flex justify-end gap-3 bg-gray-50 dark:bg-white/5 rounded-b-2xl">
-           <Button variant="secondary" onClick={onClose}>Hủy bỏ</Button>
-           <Button><Save size={16}/> Lưu thay đổi</Button>
+        <div className="p-4 border-t border-gray-200 dark:border-white/10 flex justify-between gap-3 bg-gray-50 dark:bg-white/5 rounded-b-2xl">
+           {site ? <Button variant="danger" onClick={handleDelete}><Trash2 size={16}/> Xóa Bãi xe</Button> : <div></div>}
+           <div className="flex gap-2">
+             <Button variant="secondary" onClick={onClose}>Hủy bỏ</Button>
+             <Button onClick={handleSubmit}><Save size={16}/> Lưu thay đổi</Button>
+           </div>
         </div>
       </div>
     </div>
@@ -286,8 +189,14 @@ const SiteModal: React.FC<{
 
 
 export const Sites: React.FC = () => {
+  const navigate = useNavigate();
+  const [sites, setSites] = useState<Site[]>([]);
   const [editingSite, setEditingSite] = useState<Site | undefined>(undefined);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  useEffect(() => {
+    setSites(DataStore.sites.getAll());
+  }, [isModalOpen]); // Reload on modal close
 
   const handleEdit = (site: Site) => {
     setEditingSite(site);
@@ -297,6 +206,20 @@ export const Sites: React.FC = () => {
   const handleCreate = () => {
     setEditingSite(undefined);
     setIsModalOpen(true);
+  }
+
+  const handleAccess = (id: string) => {
+    navigate(`/sites/${id}`);
+  }
+
+  const saveSite = (site: Site) => {
+    DataStore.sites.save(site);
+    setSites(DataStore.sites.getAll());
+  }
+
+  const deleteSite = (id: string) => {
+    DataStore.sites.delete(id);
+    setSites(DataStore.sites.getAll());
   }
 
   return (
@@ -310,7 +233,7 @@ export const Sites: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {MOCK_SITES.map(site => (
+        {sites.map(site => (
           <GlassCard key={site.id} className="p-0 overflow-hidden flex flex-col group hover:border-primary-500/50 transition-all cursor-pointer" onClick={() => handleEdit(site)}>
             {/* Map/Image Preview */}
             <div className="h-40 bg-gray-200 dark:bg-gray-800 relative overflow-hidden">
@@ -380,14 +303,14 @@ export const Sites: React.FC = () => {
 
               <div className="mt-4 flex gap-2">
                  <Button variant="secondary" className="flex-1 text-xs h-9" onClick={(e) => { e.stopPropagation(); handleEdit(site); }}>Cấu hình</Button>
-                 <Button className="flex-1 text-xs h-9 gap-1" onClick={(e) => e.stopPropagation()}>Truy cập <ExternalLink size={12}/></Button>
+                 <Button className="flex-1 text-xs h-9 gap-1" onClick={(e) => { e.stopPropagation(); handleAccess(site.id); }}>Truy cập <ExternalLink size={12}/></Button>
               </div>
             </div>
           </GlassCard>
         ))}
       </div>
 
-      <SiteModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} site={editingSite} />
+      <SiteModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} site={editingSite} onSave={saveSite} onDelete={deleteSite} />
     </div>
   );
 };

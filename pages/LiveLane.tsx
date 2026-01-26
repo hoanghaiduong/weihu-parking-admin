@@ -3,19 +3,34 @@ import { GlassCard, Button, Input, Badge } from '../components/ui';
 import { LprResult, VehicleType, ActivityLog, ParkingSession, SessionStatus } from '../types';
 import { RefreshCw, AlertOctagon, CheckCircle2, MoreHorizontal, Settings, Mic, Activity, Clock, Camera, History, FileText, AlertTriangle, ScanLine, MonitorPlay, RotateCcw, Save } from 'lucide-react';
 
-const MOCK_PLATES = ['59T1-123.45', '30A-999.88', '51H-456.78', '60C-111.22', '29E-555.99', '50A-001.23', '59A-222.11'];
+const MOCK_PLATES = ['51G-110.96', '51A-654.74', '51G-519.36', '51A-648.26', '51F-869.88'];
 
-// Realistic Image Sources
-const CAR_IMAGES = [
-  'https://images.unsplash.com/photo-1621929747188-0b4dc28498d2?auto=format&fit=crop&q=80&w=600', 
-  'https://images.unsplash.com/photo-1542282088-fe8426682b8f?auto=format&fit=crop&q=80&w=600', 
-  'https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&q=80&w=600', 
-  'https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&q=80&w=600', 
-  'https://images.unsplash.com/photo-1617788138017-80ad40651399?auto=format&fit=crop&q=80&w=600'
+// CCTV View - Car Barrier Images
+const CAR_BARRIER_IMAGES = [
+  '/weihu-parking-admin/assets/images/car_barrier/carlong_0002.png',
+  '/weihu-parking-admin/assets/images/car_barrier/carlong_0003.png',
+  '/weihu-parking-admin/assets/images/car_barrier/carlong_0006.png',
+  '/weihu-parking-admin/assets/images/car_barrier/carlong_0007.png',
+  '/weihu-parking-admin/assets/images/car_barrier/carlong_0009.png'
 ];
+// include green pack images (violation candidates)
+const EXTRA_GREEN_IMAGES = [
+  '/weihu-parking-admin/assets/images/green_pack/greenpack_0001.png',
+  '/weihu-parking-admin/assets/images/green_pack/greenpack_0004.png',
+  '/weihu-parking-admin/assets/images/green_pack/greenpack_0005.png'
+];
+// append to carousel list so they appear in rotation/order
+for (const p of EXTRA_GREEN_IMAGES) CAR_BARRIER_IMAGES.push(p);
 
-// CCTV View
-const CCTV_FEED_URL = 'https://images.unsplash.com/photo-1623910398453-2c1a4b49071c?auto=format&fit=crop&q=80&w=1200';
+// Optional violation mapping for specific images -> plate + engine info
+const VIOLATION_IMAGE_MAP: Record<string, { plate: string; engineDisplacement: string }> = {
+  'greenpack_0001.png': { plate: '59-P1 664.80', engineDisplacement: '110cc' },
+  'greenpack_0004.png': { plate: '59-C1 653.31', engineDisplacement: '110cc' },
+  'greenpack_0005.png': { plate: '59-T1 082.64', engineDisplacement: '110cc' }
+};
+
+// Helper to get filename from path
+const basename = (p: string) => p.split('/').pop() || p;
 
 export const LiveLane: React.FC = () => {
   const [activeLane, setActiveLane] = useState<'Entry' | 'Exit'>('Entry');
@@ -23,7 +38,9 @@ export const LiveLane: React.FC = () => {
   const [lprData, setLprData] = useState<LprResult | null>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [recentSnapshots, setRecentSnapshots] = useState<{id: number, url: string, time: string}[]>([]);
+  const [recentSnapshots, setRecentSnapshots] = useState<{id: string, url: string, time: string}[]>([]);
+  const [cctvImageIndex, setCctvImageIndex] = useState(0);
+  const snapshotIdRef = React.useRef(0);
   
   const logsEndRef = useRef<HTMLDivElement>(null);
 
@@ -78,49 +95,53 @@ export const LiveLane: React.FC = () => {
     }
   };
 
-  const simulateArrival = () => {
+  const simulateArrival = (imageIndex?: number) => {
+    const currentIndex = imageIndex !== undefined ? imageIndex : cctvImageIndex;
     if (isProcessing) return;
     
     setIsProcessing(true);
     addLog(`Phát hiện chuyển động tại vòng từ ${activeLane}`, 'info');
 
     setTimeout(() => {
-      const randomPlate = MOCK_PLATES[Math.floor(Math.random() * MOCK_PLATES.length)];
-      // Random vehicle type
-      const isCar = Math.random() > 0.4;
-      const vehicleType = isCar ? VehicleType.CAR : VehicleType.MOTORBIKE;
-      
-      // --- LOGIC PHÂN KHỐI & VI PHẠM ---
+      // determine image and any mapped violation data
+      const imageUrl = CAR_BARRIER_IMAGES[currentIndex];
+      const imageBase = basename(imageUrl);
+      const violationInfo = VIOLATION_IMAGE_MAP[imageBase];
+
+      // default plate from MOCK list (keeps existing behavior for non-mapped images)
+      let plate = MOCK_PLATES[currentIndex] ?? MOCK_PLATES[0];
+      let vehicleType = Math.random() > 0.4 ? VehicleType.CAR : VehicleType.MOTORBIKE;
       let engineCC = '';
       let isViolation = false;
       let violationReason = '';
-      let ccValue = 0;
 
-      if (vehicleType === VehicleType.MOTORBIKE) {
-         // Simulate: 50cc (30%), 110cc (30%), 125cc (20%), 150cc (20%)
-         const rand = Math.random();
-         if (rand < 0.3) ccValue = 50;
-         else if (rand < 0.6) ccValue = 110;
-         else if (rand < 0.8) ccValue = 125;
-         else ccValue = 150;
-         
-         engineCC = `${ccValue}cc`;
-
-         // RULE: Xe máy > 50cc là vi phạm (Ví dụ khu vực trường học/nội bộ)
-         if (ccValue > 50) {
-            isViolation = true;
-            violationReason = `Xe máy trên 50cc (${ccValue}cc) bị hạn chế`;
-         }
+      if (violationInfo) {
+        // Force motorbike + violation for mapped images
+        plate = violationInfo.plate;
+        vehicleType = VehicleType.MOTORBIKE;
+        engineCC = violationInfo.engineDisplacement;
+        isViolation = true;
+        violationReason = `Xe máy trên 50cc (${engineCC}) bị hạn chế`;
       } else {
-         // Car engine
-         engineCC = ['1.5L', '2.0L', '3.5L'][Math.floor(Math.random() * 3)];
+        // --- LOGIC PHÂN KHỐI (non-mapped images): determine engine but DO NOT mark violation ---
+        if (vehicleType === VehicleType.MOTORBIKE) {
+          const rand = Math.random();
+          let ccValue = 0;
+          if (rand < 0.3) ccValue = 50;
+          else if (rand < 0.6) ccValue = 110;
+          else if (rand < 0.8) ccValue = 125;
+          else ccValue = 150;
+          engineCC = `${ccValue}cc`;
+          // NOTE: do not auto-flag violations here — only mapped images are violations
+        } else {
+          engineCC = ['1.5L', '2.0L', '3.5L'][Math.floor(Math.random() * 3)];
+        }
       }
-      
+
       const confidence = 0.85 + Math.random() * 0.14;
-      const imageUrl = CAR_IMAGES[Math.floor(Math.random() * CAR_IMAGES.length)];
-      
+
       const result: LprResult = {
-        plate: randomPlate,
+        plate: plate,
         confidence: confidence,
         vehicleType: vehicleType,
         capturedAt: new Date().toLocaleTimeString(),
@@ -140,11 +161,11 @@ export const LiveLane: React.FC = () => {
       if (isViolation) {
         addLog(`CẢNH BÁO: ${result.plate} - ${violationReason}`, 'error');
       } else {
-        addLog(`Nhận diện: ${randomPlate} (${engineCC}) - OK`, result.isWhitelist ? 'success' : 'info');
+        addLog(`Nhận diện: ${result.plate} (${engineCC}) - OK`, result.isWhitelist ? 'success' : 'info');
       }
       
       setRecentSnapshots(prev => [
-        { id: Date.now(), url: imageUrl, time: result.capturedAt },
+        { id: `snap-${++snapshotIdRef.current}`, url: imageUrl, time: result.capturedAt },
         ...prev.slice(0, 3)
       ]);
     }, 1500);
@@ -158,10 +179,13 @@ export const LiveLane: React.FC = () => {
   const handleOpenBarrier = () => {
     addLog(`Lệnh mở Barrier từ vận hành viên`, 'success');
     addLog(`Trạng thái Barrier: MỞ`, 'success');
+    // Advance carousel to next image
+    const nextIndex = (cctvImageIndex + 1) % CAR_BARRIER_IMAGES.length;
+    setCctvImageIndex(nextIndex);
+    // Simulate arrival with new index
     setTimeout(() => {
-       setLprData(null); 
-       addLog(`Vòng từ trống. Chờ xe tiếp theo.`, 'info');
-    }, 2000);
+      simulateArrival(nextIndex);
+    }, 500);
   };
 
   const handleReject = () => {
@@ -236,9 +260,9 @@ export const LiveLane: React.FC = () => {
             {/* Simulated Live Feed - Dark background strictly for video container */}
             <div className="w-full h-full relative bg-gray-200 dark:bg-gray-900">
                <img 
-                 src={CCTV_FEED_URL}
+                 src={CAR_BARRIER_IMAGES[cctvImageIndex]}
                  alt="Live Feed" 
-                 className="w-full h-full object-cover opacity-90"
+                 className="w-full h-full object-cover opacity-90  transition-opacity duration-500"
                />
                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary-500/10 to-transparent animate-[scan_3s_ease-in-out_infinite] pointer-events-none"></div>
                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>

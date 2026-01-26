@@ -46,7 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, onNavigate, onLog
         </div>
         
         <div className={`ml-3 overflow-hidden transition-all duration-300 ${isCollapsed ? 'w-0 opacity-0 hidden' : 'w-0 opacity-0 lg:w-auto lg:opacity-100 lg:block hidden'}`}>
-          <h1 className="font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">WEIHU</h1>
+          <h1 className="font-bold text-gray-900 dark:text-white leading-tight whitespace-nowrap">THU</h1>
           <p className="text-[10px] text-gray-500 dark:text-gray-400 tracking-wider whitespace-nowrap">PARKING ADMIN</p>
         </div>
       </div>

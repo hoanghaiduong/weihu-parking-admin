@@ -71,7 +71,7 @@ export const SiteDetail: React.FC = () => {
           </Button>
           <div>
              <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-               Weihu Main Plaza A <span className="text-xs px-2 py-0.5 rounded bg-green-500/10 text-green-600 border border-green-500/20">ONLINE</span>
+               THU Main Plaza A <span className="text-xs px-2 py-0.5 rounded bg-green-500/10 text-green-600 border border-green-500/20">ONLINE</span>
              </h2>
              <p className="text-gray-500 dark:text-gray-400 text-sm">Giám sát trực tiếp • 123 Tech Avenue</p>
           </div>

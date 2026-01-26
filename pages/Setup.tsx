@@ -112,7 +112,7 @@ export const Setup: React.FC<SetupProps> = ({ onComplete }) => {
           {/* STEP 1: Welcome */}
           {step === 1 && (
             <div className="animate-fade-in">
-              <h3 className="text-2xl font-bold mb-4">Chào mừng đến với Weihu Parking</h3>
+              <h3 className="text-2xl font-bold mb-4">Chào mừng đến với THU Parking</h3>
               <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
                 Cảm ơn bạn đã lựa chọn Hệ thống Quản lý Bãi xe Weihu. Trình hướng dẫn này sẽ giúp bạn cấu hình máy chủ, kết nối cơ sở dữ liệu và tạo tài khoản quản trị viên.
               </p>

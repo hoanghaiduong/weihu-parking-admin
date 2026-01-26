@@ -116,7 +116,7 @@ export const System: React.FC = () => {
               <GlassCard className="p-6">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2"><Settings size={20}/> Thông tin Bãi xe</h3>
                 <div className="space-y-4">
-                  <Input label="Tên Bãi Xe" defaultValue="Weihu Main Plaza A" />
+                  <Input label="Tên Bãi Xe" defaultValue="THU A" />
                   <Input label="Địa chỉ" defaultValue="123 Tech Avenue, Innovation District" />
                   <div className="grid grid-cols-2 gap-4">
                     <Input label="Tổng chỗ Ô tô" defaultValue="200" type="number"/>

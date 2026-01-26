@@ -4,7 +4,7 @@ import { Site, Vehicle, BlacklistVehicle, CameraDevice, IoTDevice, Role, UserAcc
 
 const SEED_SITES: Site[] = [
   { 
-    id: 'SITE-01', name: 'Weihu Main Plaza A', address: '123 Tech Avenue, District 1', 
+    id: 'SITE-01', name: 'THU A', address: '123 Tech Avenue, District 1', 
     capacityCar: 500, capacityMoto: 1200, occupiedCar: 412, occupiedMoto: 850, 
     status: 'Online', cameras: 12, barriers: 4, 
     image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=800'

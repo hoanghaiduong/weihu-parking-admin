@@ -53,7 +53,7 @@ const SearchModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpe
         </div>
         <div className="px-4 py-2 bg-gray-50 dark:bg-black/20 border-t border-gray-200 dark:border-white/5 text-xs text-gray-500 flex justify-between">
            <span>Nhấn <strong>ESC</strong> để đóng</span>
-           <span>Weihu Intelligent Search</span>
+           <span>THU Intelligent Search</span>
         </div>
       </div>
     </div>
@@ -155,7 +155,7 @@ const UserDropdown: React.FC<{ onLogout: () => void }> = ({ onLogout }) => {
            <GlassCard className="absolute right-0 top-14 w-56 z-40 p-1 animate-fade-in-up dark:bg-gray-900 dark:border-gray-700 shadow-xl ring-1 ring-black/5 dark:ring-white/10">
               <div className="p-3 border-b border-gray-100 dark:border-white/5 mb-1 bg-gray-50 dark:bg-white/5 rounded-t-xl">
                 <p className="font-bold text-gray-900 dark:text-white">John Doe</p>
-                <p className="text-xs text-gray-500 truncate">john.doe@weihu.com</p>
+                <p className="text-xs text-gray-500 truncate">john.doe@THU.com</p>
               </div>
               <div className="p-1">
                 <button className="w-full flex items-center gap-2 p-2 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">

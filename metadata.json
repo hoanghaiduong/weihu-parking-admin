@@ -1,5 +1,5 @@
 {
-  "name": "Weihu Parking Admin",
+  "name": "THU Parking Admin",
   "description": "A high-performance, AI-integrated Parking Management System dashboard featuring LPR integration, real-time lane monitoring, and comprehensive revenue reporting. Built with a futuristic Glassmorphism UI.",
   "requestFramePermissions": [
     "camera"

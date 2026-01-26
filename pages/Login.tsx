@@ -34,7 +34,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <ShieldCheck className="text-white w-8 h-8" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Chào mừng trở lại</h1>
-          <p className="text-gray-500 dark:text-gray-400">Đăng nhập hệ thống quản trị Weihu Parking</p>
+          <p className="text-gray-500 dark:text-gray-400">Đăng nhập hệ thống quản trị THU Parking</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
